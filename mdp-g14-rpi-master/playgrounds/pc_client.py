@@ -9,7 +9,7 @@ Host on test Rpi: 192.168.3.1
 '''
 
 host = '192.168.14.14'
-port = 3053
+port = 3054
 
 print('# Creating socket')
 try:
@@ -30,17 +30,17 @@ print('# Connecting to server, ' + host + ' (' + remote_ip + ')')
 s.connect((remote_ip , port))
 print('connected')
 
-'''
-#Send initial message
-print('# Sending "A" to remote server')
-msg = "MDF|A\n"
-try:
-    s.sendall(msg.encode('utf-8'))
-except socket.error:
-    print ('Send failed')
-    sys.exit()
-'''
 
+#Send initial message
+while True:
+    try:
+        msg = input("# Sending msg to remote server: ")
+        s.sendall(msg.encode('utf-8'))
+    except socket.error:
+        print ('Send failed')
+        sys.exit()
+
+'''
 while True:
 #    pass
     # Check if there's any incoming messages
@@ -54,3 +54,4 @@ while True:
        except socket.error:
            print ('Send failed')
            sys.exit()
+'''
