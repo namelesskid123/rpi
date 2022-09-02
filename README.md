@@ -12,9 +12,6 @@ Ensure that OpenCV 3.3.0 is installed
    Ensure that `at-spi2-core` is installed (`sudo apt-get install at-spi2-core`)
 
 ## To run
-- Symbol Threshold Extraction: `python3 -m src.detector.SymbolIsolator.py`
-
-   Take photos of the physical Symbol Cards sequentially (1 - 5, A - E, Arrow, Circle) with the PiCamera and check threshold segmentation quality for each Symbol before approving to save the image. Symbol Images extracted via `THRESH_BINARY` will be saved into an output folder, and will be used for image recognition. Symbol Cards will have to be backed by a white backing for the contour detection to detect the edges of the card instead of the symbol for proper perspective distortion. Take note that running this will overwrite any images existing within the output folder - do a backup before running this.
    
 - Main Program: `sudo python3 -m main`
 
