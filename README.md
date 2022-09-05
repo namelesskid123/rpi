@@ -24,4 +24,5 @@ Ensure that OpenCV 3.3.0 is installed
 `hcitool scan`
 
 master-g14-rpi-master is the outdated file
+
 clone and try RPi file in the actual raspberry pi 
