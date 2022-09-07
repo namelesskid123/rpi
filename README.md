@@ -23,7 +23,8 @@ Ensure that OpenCV 3.3.0 is installed
 
 `hcitool scan`
 
-NOTE TO ANDROID/ALGO/STM TEAM:
+
+## NOTE TO ANDROID/ALGO/STM TEAM:
 
 - the scripts in this repo is outdated, i forgot to safe a copy of the latest version of script 
 
