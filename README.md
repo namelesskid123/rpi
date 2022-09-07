@@ -23,6 +23,10 @@ Ensure that OpenCV 3.3.0 is installed
 
 `hcitool scan`
 
-master-g14-rpi-master is the outdated file
+NOTE TO ANDROID/ALGO/STM TEAM:
 
-clone and try RPi file in the actual raspberry pi 
+- the scripts in this repo is outdated, i forgot to safe a copy of the latest version of script 
+
+- the script is in the RPI
+
+- commands.txt is a text file with most of the message formats. Tell me if more is needed 
