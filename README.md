@@ -26,8 +26,4 @@ Ensure that OpenCV 3.3.0 is installed
 
 ## NOTE TO ANDROID/ALGO/STM TEAM:
 
-- the scripts in this repo is outdated, i forgot to safe a copy of the latest version of script 
-
-- the script is in the RPI
-
-- commands.txt is a text file with most of the message formats. Tell me if more is needed 
+- commands.txt is a text file with most of the message formats.
