@@ -22,7 +22,7 @@ Android > Algo, "waypoint (x,y)", Set waypoint (x,y) eg. waypoint (8,11)
 
 Arduino > Algo, "S1|S2|S3|S4|S5|S6", SX being the sensor value for X sensor
 
-Arduino > Android, "x,y|", current location of the robot with respect to the origin 
+Arduino > Android, "Coords|x,y", current location of the robot with respect to the origin 
 
 Algo > Arduino, "F1|", Move forward
 Algo > Arduino, "F2|", Stop
