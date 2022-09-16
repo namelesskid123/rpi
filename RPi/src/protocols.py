@@ -20,36 +20,59 @@ class Status:
     IMAGE_RECOGNITION = 'IR'.encode()
     FASTEST_PATH = 'fastest path'.encode()
 
-
-class Android-Arduino:
-    MOVE_FORWARD = 'U1|'.encode()
-    MOVE_BACK = 'B1|'.encode()
-    TURN_LEFT = 'L1|'.encode()
-    TURN_RIGHT = 'W1|'.encode()
-    DO_SHORTCUT_1 = 'F1|'.encode()
-    DO_SHORTCUT_2 = 'F2|'.encode()
+class AlgorithmToArduino:
+    MOVE_FORWARD = 'F1|'.encode()
+    STOP = 'F2|'.encode()
+    REVERSE = 'F3|'.encode()
+    RIGHTWIDE =  'R1|'.encode()
+    RIGHTNARROW = 'R2|'.encode()
+    LEFTWIDE = 'L1|'.encode()
+    LEFTNARROW = 'L2|'.encode()
+    CENTER = 'C1|'.encode()
+    
+class AndroidToArduino:
+    FORWARD = 'F1'.encode()
+    STOP = 'F2'.encode()
+    REVERSE = 'F3'.encode()
+    RIGHT_WIDE = 'R1'.encode()
+    RIGHT_NARROW = 'R2'.encode()
+    LEFT_WIDE = 'L1'.encode()
+    LEFT_NARROW = 'L2'.encode()
+    CENTER = 'C1'.encode()
 
     ALL_MESSAGES = [
-        MOVE_FORWARD,
-        MOVE_BACK,
-        TURN_LEFT,
-        TURN_RIGHT,
-        DO_SHORTCUT_1,
-        DO_SHORTCUT_2,
+        FORWARD,
+        STOP,
+        REVERSE,
+        RIGHT_WIDE,
+        RIGHT_NARROW,
+        LEFT_WIDE,
+        LEFT_NARROW,
+        CENTER
     ]
 
 
-class Android-Algorithm:
+class AndroidToAlgorithm:
     START_IMAGE_RECOGNITION = 'IR|'.encode()
     START_FASTEST_PATH = 'FP|'.encode()
-    SEND_ARENA = 'SendArena'.encode()
+    SEND_ARENA = 'SendArena|'.encode()
     REQUEST_MDF = 'MDF|'.encode()
 
 class AndroidToRPi:
     CALIBRATE_SENSOR = 'SC|'.encode()
 
-#change with whatever movelist in the algo file
-class Algorithm-Android:
+class AlgorithmToArduino:
+    FORWARD = 'F1|'.encode()
+    STOP = 'F2|'.encode()
+    REVERSE = 'F3|'.encode()
+    RIGHT_WIDE = 'R1|'.encode()
+    RIGHT_NARROW = 'R2|'.encode()
+    LEFT_WIDE = 'L1|'.encode()
+    LEFT_NARROW = 'L2|'.encode()
+    CENTER = 'C1|'.encode()
+
+
+class AlgorithmToAndroid:
     MOVE_FORWARD = 'FS'.encode()[0]
     TURN_LEFT = 'L'.encode()[0]
     TURN_RIGHT = 'W'.encode()[0]
@@ -61,12 +84,12 @@ class Algorithm-Android:
     MDF_STRING = 'M'.encode()[0]
 
 
-class Algorithm-RPi:
+class AlgorithmToRPi:
     TAKE_PICTURE = 'C'.encode()[0]
     EXPLORATION_COMPLETE = 'N'.encode()
 
 
-class RPi-Android:
+class RPiToAndroid:
     STATUS_EXPLORATION = '{"status":"exploring"}'.encode()
     STATUS_SHORTEST_PATH = '{"status":"shortest path"}'.encode()
     STATUS_TURN_LEFT = '{"status":"turning left"}'.encode()
@@ -82,14 +105,20 @@ class RPi-Android:
     MOVE_UP = '{"move":[{"direction":"forward"}]}'.encode()
     TURN_LEFT = '{"move":[{"direction":"left"}]}'.encode()
     TURN_RIGHT = '{"move":[{"direction":"right"}]}'.encode()
+    
+    IMAGE = 'IM|'
+    POSITION = 'P|'
 
 
-class RPi-Arduino:
+class RPiToArduino:
     CALIBRATE_SENSOR = 'SC|'.encode()
     START_IMAGE_RECOGNITION = 'E|'.encode()
     START_FASTEST_PATH = 'F|'.encode()
 
 
-class RPi-Algorithm:
+class RPiToAlgorithm:
     DONE_TAKING_PICTURE = 'D'.encode()
     DONE_IMG_REC = 'I'.encode()
+
+class Rubbish:
+    Rubbish = '\x00'.encode()
