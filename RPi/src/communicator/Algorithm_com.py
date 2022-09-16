@@ -1,3 +1,4 @@
+import sys
 import socket
 
 from src.config import LOCALE, ALGORITHM_SOCKET_BUFFER_SIZE, WIFI_IP, WIFI_PORT
@@ -32,10 +33,7 @@ class Algorithm_communicator:
                     self.client_sock, self.address = self.socket.accept()
                     print('Successfully connected with Algorithm PC: ' + str(self.address))
                     retry = False
-<<<<<<< HEAD:RPi/src/communicator/Algorithm.py
-                    print(retry)
-=======
->>>>>>> f2afaf36a2b19dd5407c0283ddd18d146ad6b9d5:RPi/src/communicator/Algorithm_com.py
+                    print("retry =", retry)
                 
             except Exception as error:
                 print('Connection with Algorithm failed: ' + str(error))
@@ -81,7 +79,7 @@ class Algorithm_communicator:
 
             if len(message) > 0:
                 print('Message From Algorithm:')
-                print(message)
+                print(type(message)," ", message)
                 return message
 
             return None
@@ -93,8 +91,8 @@ class Algorithm_communicator:
     def write_algo(self, message):
         try:
             print('To Algorithm:')
-            print(message)
-            self.client_sock(message)
+            print(message, " ", sys.getsizeof(message))
+            #self.client_sock(message)
             self.client_sock.send(message)
             
         except Exception as error:
@@ -102,20 +100,12 @@ class Algorithm_communicator:
             raise error
 
 if __name__ == '__main__':
-    message = "Hello from Rpi"
-<<<<<<< HEAD:RPi/src/communicator/Algorithm.py
-    A = Algorithm()
-    A.connect()
-    print("Connection is successful") 
-    A.write(message)
-=======
+    message = "Hello from Rpi".encode()
     A = Algorithm_communicator()
     A.connect_algo()
     print("Connection is successful") 
     A.write_algo(message)
->>>>>>> f2afaf36a2b19dd5407c0283ddd18d146ad6b9d5:RPi/src/communicator/Algorithm_com.py
     print("Message successfully sent")
-    A.read_algo()
-    print("Message successfully receved")
-  #  Algorithm().write(message)
+    #A.read_algo()
+    #print("Message successfully receved")
     print("Algo script successfully ran.")

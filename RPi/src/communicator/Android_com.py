@@ -13,7 +13,7 @@ class Android_communicator:
         bt.advertise_service(
 
             self.server_sock,
-            'MDO_Group_3_RPi',
+            'MDP_Group_14_RPi',
             profiles=[bt.SERIAL_PORT_PROFILE],
             service_id = UUID,
             service_classes = [UUID, bt.SERIAL_PORT_CLASS]
@@ -77,7 +77,7 @@ class Android_communicator:
     def read_android(self):
         try:
             message = self.client_sock.recv(ANDROID_SOCKET_BUFFER_SIZE).strip()
-            print('The message from android:')
+            print('Message from android:')
             print(message)
 
             if message is None:

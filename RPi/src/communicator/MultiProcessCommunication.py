@@ -1,7 +1,7 @@
-from src.communicator.Android_com import Android_com
-from src.communicator.Arduino_com import Arduino_com
-from src.communicator.Algorithm_com import Algorithm_com
-#from src.config import STOPPING_IMAGE, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_FORMAT
+from src.communicator.Android_com import Android_communicator
+from src.communicator.Arduino_com import Arduino_communicator
+from src.communicator.Algorithm_com import Algorithm_communicator
+from src.config import STOPPING_IMAGE, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_FORMAT
 from src.protocols import *
 
 #from PIL import Image
@@ -9,6 +9,8 @@ import numpy as np
 #import imagezmq
 #from picamera import PiCamera
 #from picamera.array import PiRGBArray
+
+import time
 
 
 import collections
@@ -76,7 +78,7 @@ class MultiProcessCommunicator:
         self.write_process = Process(target=self._write_target)
         self.write_android_process = Process(target=self._write_android)
         
- """
+        
         # the current action / status of the robot
         self.status = Status.IDLE  # robot starts off being idle
 
@@ -86,6 +88,7 @@ class MultiProcessCommunicator:
         self.image_process = None
         self.image_deque = None
         
+        """
         if image_processing_server_url is not None:
             print('------Start Exploration with image recognition-----')
             self.image_process = Process(target=self._process_pic)
@@ -96,20 +99,20 @@ class MultiProcessCommunicator:
             self.image_count = Value('i',0)
             print("self.image_deque:", self.image_deque)
 
-"""
+        """
         
         
     def start(self):        
         try:
-            self.algorithm.connect_arduino()
+            self.algorithm.connect_algo()
             self.arduino.connect_arduino()
-            self.android.connect_arduino()
+            self.android.connect_android()
 
             print('Connected to Algorithm, Arduino and Android')
 
-            self.read_algorithm_process.start_algo()
-            self.read_arduino_process.start_arduino()
-            self.read_android_process.start_android()
+            self.read_algorithm_process.start()
+            self.read_arduino_process.start()
+            self.read_android_process.start()
             self.write_process.start()
             self.write_android_process.start()
 
@@ -139,39 +142,40 @@ class MultiProcessCommunicator:
 
         while True:
             try:
+                
                 if not self.read_algorithm_process.is_alive():
                     self._reconnect_algorithm()
-
+                
                 if not self.read_arduino_process.is_alive():
                     self._reconnect_arduino()
-                    
+            
                 if not self.read_android_process.is_alive():
                     self._reconnect_android()
-                    
+                
                 if not self.write_process.is_alive():
                     if self.dropped_connection.value == 0:
                         self._reconnect_arduino()
                     elif self.dropped_connection.value == 1:
                         self._reconnect_algorithm()
-                        
+                
                 if not self.write_android_process.is_alive():
                     self._reconnect_android()
                 
                 if self.image_process is not None and not self.image_process.is_alive():
                    self.image_process.terminate()
-                    
+                
             except Exception as error:
                 print("Error during reconnection: ",error)
                 raise error
 
     def _reconnect_algorithm(self):
-        self.algorithm.disconnect()
+        self.algorithm.disconnect_algo()
 
         self.read_algorithm_process.terminate()
         self.write_process.terminate()
         self.write_android_process.terminate()
 
-        self.algorithm.connect()
+        self.algorithm.connect_algo()
 
         self.read_algorithm_process = Process(target=self._read_algorithm)
         self.read_algorithm_process.start()
@@ -185,13 +189,13 @@ class MultiProcessCommunicator:
         print('Successfully reconnected to Algorithm')
 
     def _reconnect_arduino(self):
-        self.arduino.disconnect()
+        self.arduino.disconnect_arduino()
         
         self.read_arduino_process.terminate()
         self.write_process.terminate()
         self.write_android_process.terminate()
 
-        self.arduino.connect()
+        self.arduino.connect_arduino()
 
         self.read_arduino_process = Process(target=self._read_arduino)
         self.read_arduino_process.start()
@@ -206,13 +210,13 @@ class MultiProcessCommunicator:
 
 
     def _reconnect_android(self):
-        self.android.disconnect()
+        self.android.disconnect_android()
         
         self.read_android_process.terminate()
         self.write_process.terminate()
         self.write_android_process.terminate()
         
-        self.android.connect()
+        self.android.connect_android()
         
         self.read_android_process = Process(target=self._read_android)
         self.read_android_process.start()
@@ -228,7 +232,7 @@ class MultiProcessCommunicator:
     def _read_arduino(self):
         while True:
             try:
-                messages = self.arduino.read()
+                messages = self.arduino.read_arduino()
                 
                 if messages is None:
                     continue
@@ -237,12 +241,17 @@ class MultiProcessCommunicator:
                 for message in message_list:
                 
                     if len(message) <= 0:
-                        continue    
+                        continue
                         
+                    print(self._format_for(ALGORITHM_HEADER,
+                        message + NEWLINE))
                     self.message_deque.append(self._format_for(
                         ALGORITHM_HEADER, 
                         message + NEWLINE
                     ))
+                    
+                    ##IMPLEMENT THIS##
+                    #insert check if msg is dist msg
                     
             except Exception as error:
                 print('Process read_arduino failed: ' + str(error))
@@ -251,7 +260,7 @@ class MultiProcessCommunicator:
     def _read_algorithm(self):
         while True:
             try:
-                messages = self.algorithm.read()
+                messages = self.algorithm.read_algo()
                 
                 if messages is None:
                     continue
@@ -262,31 +271,45 @@ class MultiProcessCommunicator:
                 
                     if len(message) <= 0:
                         continue
-                    
+                        
+                    elif message[0] == AlgorithmToAndroid.MDF_STRING:
+                        print(message + NEWLINE)
+                        self.to_android_message_deque.append(
+                            message + NEWLINE)
+                        
+                    else:
+                        print(self._format_for(ARDUINO_HEADER,
+                        message + NEWLINE))
+                        self.message_deque.append(self._format_for(
+                            ARDUINO_HEADER,
+                            message #+ NEWLINE
+                        ))
+                        
+                    """
                     # image recognition
-                    elif message[0] == Algorithm-RPi.TAKE_PICTURE:
+                    elif message[0] == AlgorithmToRPi.TAKE_PICTURE:
 
                         if self.image_count.value >= 5:
                             self.message_deque.append(self._format_for(
                             ALGORITHM_HEADER, 
-                            RPi-Algorithm.DONE_IMG_REC + NEWLINE
+                            RPiToAlgorithm.DONE_IMG_REC + NEWLINE
                         ))
                         
                         else:
                             
                             message = message[2:-1]  # to remove 'C[' and ']'
                             self.to_android_message_deque.append(
-                                RPi-Android.STATUS_TAKING_PICTURE + NEWLINE
+                                RPiToAndroid.STATUS_TAKING_PICTURE + NEWLINE
                             )
                             image = self._take_pic()
                             print('Picture taken')
                             self.message_deque.append(self._format_for(
                                 ALGORITHM_HEADER, 
-                                RPi-Algorithm.DONE_TAKING_PICTURE + NEWLINE
+                                RPiToAlgorithm.DONE_TAKING_PICTURE + NEWLINE
                             ))
                             self.image_deque.append([image,message])
 
-                    elif message == Algorithm-RPi.EXPLORATION_COMPLETE:
+                    elif message == AlgorithmToRPi.EXPLORATION_COMPLETE:
                         # to let image processing server end all processing and display all images
                         self.status = Status.IDLE
                         
@@ -295,18 +318,17 @@ class MultiProcessCommunicator:
                         cv_img = np.array(pil_img)
                         cv_img = cv_img[:,:,::-1].copy()
                         self.image_deque.append([cv_img,"-1,-1|-1,-1|-1,-1"])
-
-                    elif message[0] == Algorithm-Android.MDF_STRING:
-                        self.to_android_message_deque.append( 
-                            message[1:] + NEWLINE
-                        )
                     
                     else:  # (message[0]=='W' or message in ['D|', 'A|', 'Z|']):
-                        self._forward_message_algorithm_to_android(message)
+                        #self._forward_message_algorithm_to_android(message)
+                        print(self._format_for(ARDUINO_HEADER,
+                            message + NEWLINE))
                         self.message_deque.append(self._format_for(
                             ARDUINO_HEADER, 
                             message + NEWLINE
                         ))
+                    """
+                    
                 
             except Exception as error:
                 print('Process read_algorithm failed: ' + str(error))
@@ -320,48 +342,48 @@ class MultiProcessCommunicator:
             if len(message_for_android) <= 0:
                 continue
 
-            elif message_for_android[0] == Algorithm-Android.CALIBRATING_CORNER:
+            elif message_for_android[0] == AlgorithmToAndroid.CALIBRATING_CORNER:
                 self.to_android_message_deque.append(
-                    RPi-Android.STATUS_CALIBRATING_CORNER + NEWLINE
+                    RPiToAndroid.STATUS_CALIBRATING_CORNER + NEWLINE
                 )
 
-            elif message_for_android[0] == Algorithm-Android.SENSE_ALL:
+            elif message_for_android[0] == AlgorithmToAndroid.SENSE_ALL:
                 self.to_android_message_deque.append(
-                    RPi-Android.STATUS_SENSE_ALL + NEWLINE
+                    RPiToAndroid.STATUS_SENSE_ALL + NEWLINE
                 )
 
-            elif message_for_android[0] == Algorithm-Android.ALIGN_RIGHT:
+            elif message_for_android[0] == AlgorithmToAndroid.ALIGN_RIGHT:
                 self.to_android_message_deque.append(
-                    RPi-Android.STATUS_ALIGN_RIGHT + NEWLINE
+                    RPiToAndroid.STATUS_ALIGN_RIGHT + NEWLINE
                 )
 
-            elif message_for_android[0] == Algorithm-Android.ALIGN_FRONT:
+            elif message_for_android[0] == AlgorithmToAndroid.ALIGN_FRONT:
                 self.to_android_message_deque.append(
-                    RPi-Android.STATUS_ALIGN_FRONT + NEWLINE
+                    RPiToAndroid.STATUS_ALIGN_FRONT + NEWLINE
                 )
 
-            elif message_for_android[0] == Algorithm-Android.MOVE_FORWARD:
+            elif message_for_android[0] == AlgorithmToAndroid.MOVE_FORWARD:
                 if self.status == Status.EXPLORING:
                     self.to_android_message_deque.append(
-                        RPi-Android.STATUS_EXPLORING + NEWLINE
+                        RPiToAndroid.STATUS_EXPLORING + NEWLINE
                     )
 
-            elif message_for_android[0] == Algorithm-Android.TURN_LEFT:
+            elif message_for_android[0] == AlgorithmToAndroid.TURN_LEFT:
                 self.to_android_message_deque.append(
-                    RPi-Android.TURN_LEFT + NEWLINE
+                    RPiToAndroid.TURN_LEFT + NEWLINE
                 )
                 
                 self.to_android_message_deque.append(
-                   RPi-Android.STATUS_TURNING_LEFT + NEWLINE
+                   RPiToAndroid.STATUS_TURNING_LEFT + NEWLINE
                 )
             
-            elif message_for_android[0] == Algorithm-Android.TURN_RIGHT:
+            elif message_for_android[0] == AlgorithmToAndroid.TURN_RIGHT:
                 self.to_android_message_deque.append(
-                    RPi-Android.TURN_RIGHT + NEWLINE
+                    RPiToAndroid.TURN_RIGHT + NEWLINE
                 )
                 
                 self.to_android_message_deque.append(
-                   RPi-Android.STATUS_TURNING_RIGHT + NEWLINE
+                   RPiToAndroid.STATUS_TURNING_RIGHT + NEWLINE
                 )
             
 
@@ -371,17 +393,17 @@ class MultiProcessCommunicator:
                 print('Move forward by this number of steps:', forward_steps_no)
                 for _ in range(forward_steps_no):
                     self.to_android_message_deque.append(
-                        RPi-Android.MOVE_UP + NEWLINE
+                        RPiToAndroid.MOVE_UP + NEWLINE
                     )           
                     
                     self.to_android_message_deque.append(
-                        RPi-Android.STATUS_MOVING_FORWARD + NEWLINE
+                        RPiToAndroid.STATUS_MOVING_FORWARD + NEWLINE
                     )        
 
     def _read_android(self):
         while True:
             try:
-                messages = self.android.read()
+                messages = self.android.read_android()
                 
                 if messages is None:
                     continue
@@ -391,33 +413,40 @@ class MultiProcessCommunicator:
                 for message in message_list:
                     if len(message) <= 0:
                         continue
-
-                    elif message in (Android-Arduino.ALL_MESSAGES + [Android-RPi.CALIBRATE_SENSOR]):
-                        if message == Android-RPi.CALIBRATE_SENSOR:
+                    
+                    #Manual movement control using buttons in android add
+                    elif message in (AndroidToArduino.ALL_MESSAGES + [AndroidToRPi.CALIBRATE_SENSOR]):
+                        if message == AndroidToRPi.CALIBRATE_SENSOR:
                             self.message_deque.append(self._format_for(
                                 ARDUINO_HEADER, 
-                                RPi-Arduino.CALIBRATE_SENSOR + NEWLINE
+                                RPiToArduino.CALIBRATE_SENSOR + NEWLINE
                             ))
                         
                         else:
                             self.message_deque.append(self._format_for(
-                                ARDUINO_HEADER, message + NEWLINE
+                                ARDUINO_HEADER, message #+ NEWLINE
                             ))
+                    
+                    #Android sends map data to Algorithm
+                    elif AndroidToAlgorithm.SEND_ARENA in message:
+                        self.message_deque.append(self._format_for(
+                            ALGORITHM_HEADER, message + NEWLINE
+                        ))
                         
                     else:
-                        if message == Android-Algorithm.START_IMAGE_RECOGNITION:
+                        if message == AndroidToAlgorithm.START_IMAGE_RECOGNITION:
                             self.status = Status.IMAGE_RECOGNITION
                             self.message_deque.append(self._format_for(
                                 ARDUINO_HEADER,
-                                RPi-Arduino.START_IMAGE_RECOGNITION + NEWLINE
+                                RPiToArduino.START_IMAGE_RECOGNITION + NEWLINE
                             ))
 
-                        elif message == Android-Algorithm.FASTEST_PATH:
+                        elif message == AndroidToAlgorithm.START_FASTEST_PATH:
                             self.status = Status.FASTEST_PATH
                             time.sleep(0.5)
                             self.message_deque.append(self._format_for(
                                 ARDUINO_HEADER, 
-                                RPi-Arduino.START_FASTEST_PATH + NEWLINE
+                                RPiToArduino.START_FASTEST_PATH + NEWLINE
                             ))
 
                         self.message_deque.append(self._format_for(
@@ -437,15 +466,18 @@ class MultiProcessCommunicator:
                 if len(self.message_deque)>0:
                     message = self.message_deque.popleft()
                     target, payload = message['target'], message['payload']
+                    print("payload: ", payload)
 
                     if target == ARDUINO_HEADER:
-                        self.arduino.write(payload)
+                        self.arduino.write_arduino(payload)
                         
                     elif target == ALGORITHM_HEADER:
-                        self.algorithm.write(payload)
+                        self.algorithm.write_algo(payload)
                         
                     else:
                         print("Invalid header", target)
+                
+                time.sleep(0.05)
                 
             except Exception as error:
                 print('Process write_target failed: ' + str(error))
@@ -466,10 +498,11 @@ class MultiProcessCommunicator:
                 if len(self.to_android_message_deque)>0:
                     message = self.to_android_message_deque.popleft()
                     
-                    self.android.write(message)
+                    self.android.write_android(message)
                 
                 else:
-                    self.android.write("polling")
+                    self.android.write_android("polling")
+                    time.sleep(5)
                 
             except Exception as error:
                 print('Process write_android failed: ' + str(error))

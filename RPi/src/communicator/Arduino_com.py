@@ -3,6 +3,7 @@ import serial
 from src.config import SERIAL_PORT
 from src.config import BAUD_RATE
 from src.config import LOCALE
+import time
 
 
 class Arduino_communicator:
@@ -54,7 +55,10 @@ class Arduino_communicator:
 
     def read_arduino(self):
         try:
-            message = self.connection.readline().strip()
+            #message = self.connection.readline().strip()
+            
+            #####TESTING#####
+            message = self.connection.read(3)
             print('From Arduino:')
             print(message)
 
@@ -80,11 +84,18 @@ class Arduino_communicator:
 if __name__ == '__main__':
     A = Arduino_communicator()
     A.connect_arduino()
-    A.read_arduino()
-    message = "Hello Arduino"
-<<<<<<< HEAD:RPi/src/communicator/Arduino.py
-    A.write(message)
-=======
+    message = "R2".encode()
+    
+    time.sleep(1)
+    print("TESTING")
     A.write_arduino(message)
->>>>>>> f2afaf36a2b19dd5407c0283ddd18d146ad6b9d5:RPi/src/communicator/Arduino_com.py
+    print("WAITING")
+    time.sleep(5)
+    print("RECIEVING")
+    A.read_arduino()
+    
+    """
+    message = "Hello Arduino"
+    A.write_arduino(message)
     print("Arduino script succesfully ran.")
+    """
