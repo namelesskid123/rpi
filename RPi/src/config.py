@@ -4,19 +4,19 @@ LOCALE = 'UTF-8'
 
 RFCOMM_CHANNEL = 8
 RPI_MAC_ADDR = "B8:27:EB:14:A1:9C"
-UUID = "00000000-0000-1000-8000-00805F9B34FC"
+UUID = "00001101-0000-1000-8000-00805F9B34FA"
 ANDROID_SOCKET_BUFFER_SIZE = 512
 
 # Algorithm Wifi connection settings
 # raspberryHotPotato: 192.168.3.1
 WIFI_IP = "192.168.14.14"
-WIFI_PORT = 3053
+WIFI_PORT = 3054
 ALGORITHM_SOCKET_BUFFER_SIZE = 512
 
 # Arduino USB connection settings
 # SERIAL_PORT = '/dev/ttyACM0'
 # Symbolic link to always point to the correct port that arduino is connected to
-SERIAL_PORT = '/dev/ttyACM0' #change this to the one in rpi 
+SERIAL_PORT = "/dev/ttyUSB0" #"/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0002-if00-port0" 
 BAUD_RATE = 115200
 
 # Image Recognition Settings
@@ -26,7 +26,6 @@ IMAGE_WIDTH = 640
 IMAGE_HEIGHT = 360
 IMAGE_FORMAT = 'bgr'
 
-<<<<<<< HEAD
 BASE_IP = 'tcp://192.168.3.'
 PORT = ':5555'
 
