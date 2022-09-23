@@ -86,7 +86,7 @@ Algorithm to Android, "M{"map":[{"explored":MDF STRING Part 1,"length":300,"obst
 Algorithm to Rpi, "C[x,y|x,y|x,y]", Command Rpi to take photo and store coordinates of obstacle that image is taken from (if no obstacle, x = -1, y = -1)
 Algorithm to Rpi, "N", Exploration ended, stop image processing server and display process images
 
-Rpi to Android, "{"image":[x,y,id]}", Send android coordinates and image id of image
+Rpi to Android, "{"I":[x,y,id]}", Send android coordinates and image id of image
 
 Rpi to Android, "{"status":"exploring"}", Robot is exploring
 Rpi to Android, "{"status":"shortest path"}", Robot is doing fastest path
@@ -110,4 +110,3 @@ Rpi to Arduino, "F|", Start the shortest path task
 
 Rpi to Algorithm, "D", Tell Algorithm PC that photo has been taken and Algorithm can resume exploration
 Rpi to Algorithm, "I", Tell Algorithm that all images have been taken
->>>>>>> f2afaf36a2b19dd5407c0283ddd18d146ad6b9d5

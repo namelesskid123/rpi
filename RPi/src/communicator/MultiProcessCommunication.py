@@ -1,21 +1,26 @@
+import sys
+sys.path.append('/home/raspberry/.virtualenvs/cv/lib/python3.9/site-packages')
+
 from src.communicator.Android_com import Android_communicator
 from src.communicator.Arduino_com import Arduino_communicator
 from src.communicator.Algorithm_com import Algorithm_communicator
 from src.config import STOPPING_IMAGE, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_FORMAT
 from src.protocols import *
 
-#from PIL import Image
+from PIL import Image
 import numpy as np
-#import imagezmq
-#from picamera import PiCamera
-#from picamera.array import PiRGBArray
+import imagezmq
+from picamera import PiCamera
+from picamera.array import PiRGBArray
 
 import time
-
 
 import collections
 from multiprocessing import Process, Value
 from multiprocessing.managers import BaseManager
+
+import sys
+
 
 img_count = 0
 class DequeProxy(object):
@@ -47,7 +52,7 @@ class MultiProcessCommunicator:
     """
     This class will carry out multi-processing communication process between Algorithm, Android and Arduino.
     """
-    def __init__(self, image_processing_server_url: str=None):
+    def __init__(self, image_processing_server_url: str="tcp://192.168.14.12:5555"):
         """
         Start the multiprocessing process and set up all the relevant variables
 
@@ -87,8 +92,9 @@ class MultiProcessCommunicator:
         # for image recognition
         self.image_process = None
         self.image_deque = None
+        self.total_img_count = 0
         
-        """
+    
         if image_processing_server_url is not None:
             print('------Start Exploration with image recognition-----')
             self.image_process = Process(target=self._process_pic)
@@ -99,19 +105,19 @@ class MultiProcessCommunicator:
             self.image_count = Value('i',0)
             print("self.image_deque:", self.image_deque)
 
-        """
+    
         
         
     def start(self):        
         try:
             self.algorithm.connect_algo()
-            self.arduino.connect_arduino()
+            #self.arduino.connect_arduino()
             self.android.connect_android()
 
             print('Connected to Algorithm, Arduino and Android')
 
             self.read_algorithm_process.start()
-            self.read_arduino_process.start()
+            #self.read_arduino_process.start()
             self.read_android_process.start()
             self.write_process.start()
             self.write_android_process.start()
@@ -146,8 +152,8 @@ class MultiProcessCommunicator:
                 if not self.read_algorithm_process.is_alive():
                     self._reconnect_algorithm()
                 
-                if not self.read_arduino_process.is_alive():
-                    self._reconnect_arduino()
+                #if not self.read_arduino_process.is_alive():
+                    #self._reconnect_arduino()
             
                 if not self.read_android_process.is_alive():
                     self._reconnect_android()
@@ -276,20 +282,17 @@ class MultiProcessCommunicator:
                         print(message + NEWLINE)
                         self.to_android_message_deque.append(
                             message + NEWLINE)
+                    
+                    #updating movement of robot to android
+                    elif message[0] == AlgorithmToAndroid.POSITION:
+                        print(message + NEWLINE)
+                        self.to_android_message_deque.append(
+                            message + NEWLINE)
                         
-                    else:
-                        print(self._format_for(ARDUINO_HEADER,
-                        message + NEWLINE))
-                        self.message_deque.append(self._format_for(
-                            ARDUINO_HEADER,
-                            message #+ NEWLINE
-                        ))
-                        
-                    """
                     # image recognition
                     elif message[0] == AlgorithmToRPi.TAKE_PICTURE:
-
-                        if self.image_count.value >= 5:
+                        
+                        if self.image_count.value >= 10:
                             self.message_deque.append(self._format_for(
                             ALGORITHM_HEADER, 
                             RPiToAlgorithm.DONE_IMG_REC + NEWLINE
@@ -298,9 +301,10 @@ class MultiProcessCommunicator:
                         else:
                             
                             message = message[2:-1]  # to remove 'C[' and ']'
-                            self.to_android_message_deque.append(
+                            '''self.to_android_message_deque.append(
                                 RPiToAndroid.STATUS_TAKING_PICTURE + NEWLINE
                             )
+                            '''
                             image = self._take_pic()
                             print('Picture taken')
                             self.message_deque.append(self._format_for(
@@ -318,7 +322,16 @@ class MultiProcessCommunicator:
                         cv_img = np.array(pil_img)
                         cv_img = cv_img[:,:,::-1].copy()
                         self.image_deque.append([cv_img,"-1,-1|-1,-1|-1,-1"])
-                    
+                        
+                    else:
+                        print(self._format_for(ARDUINO_HEADER,
+                        message))
+                        self.message_deque.append(self._format_for(
+                            ARDUINO_HEADER,
+                            message #+ NEWLINE
+                        ))
+                        
+                    '''
                     else:  # (message[0]=='W' or message in ['D|', 'A|', 'Z|']):
                         #self._forward_message_algorithm_to_android(message)
                         print(self._format_for(ARDUINO_HEADER,
@@ -327,7 +340,7 @@ class MultiProcessCommunicator:
                             ARDUINO_HEADER, 
                             message + NEWLINE
                         ))
-                    """
+                    '''
                     
                 
             except Exception as error:
@@ -385,9 +398,7 @@ class MultiProcessCommunicator:
                 self.to_android_message_deque.append(
                    RPiToAndroid.STATUS_TURNING_RIGHT + NEWLINE
                 )
-            
-
-
+        
                 forward_steps_no = int(message_for_android.decode()[1:])
 
                 print('Move forward by this number of steps:', forward_steps_no)
@@ -432,6 +443,12 @@ class MultiProcessCommunicator:
                         self.message_deque.append(self._format_for(
                             ALGORITHM_HEADER, message + NEWLINE
                         ))
+                        
+                        #finding out how many images that needs to be detected
+                        msg_d = message.decode()
+                        coord_lst = msg_d[10:].split('|')
+                        self.total_img_count = len(coord_lst)
+                        
                         
                     else:
                         if message == AndroidToAlgorithm.START_IMAGE_RECOGNITION:
@@ -510,11 +527,12 @@ class MultiProcessCommunicator:
                 self._reconnect_android()
                 break
     
-    '''
+
     def _take_pic(self):
         global img_count
         try:
-
+            
+            print('taking photo')
             # initialise pi camera
             camera = PiCamera(resolution=(IMAGE_WIDTH, IMAGE_HEIGHT))  # '640x360'
             camera.awb_mode = 'horizon'
@@ -524,7 +542,7 @@ class MultiProcessCommunicator:
             rawCapture = PiRGBArray(camera)
             
             # grab an image from the camera
-            camera.capture(rawCapture, format=IMAGE_FORMAT)
+            camera.capture(rawCapture, format='bgr')
             image = rawCapture.array
             pil_img = np.asarray(image)
             pil_img = Image.fromarray(pil_img[:,:,::-1])
@@ -541,7 +559,6 @@ class MultiProcessCommunicator:
     def _process_pic(self):
         print("----------------------- Image Processing Starts -------------------")
         print(self.image_processing_server_url)
-        print(type(self.image_processing_server_url))
         image_sender = imagezmq.ImageSender(
             connect_to=self.image_processing_server_url)
         print(type(self.image_deque))
@@ -554,7 +571,7 @@ class MultiProcessCommunicator:
                     # format: 'x,y|x,y|x,y'
                     obstacle_coordinates = message_for_image[1]
 
-                    #print("-----------Prepareing to send image---------")
+                    print("-----------Prepareing to send image---------")
                     reply = image_sender.send_image(
                         'image message from RPi',
                         message_for_image[0]
@@ -581,11 +598,18 @@ class MultiProcessCommunicator:
 
                             if detection == '-1':
                                 continue  # if there isn't any  symbol detected, mapping of symbol id will  be skipped
+                            elif detection == 'bullseye':
+                                self.message_deque.append(self._format_for(
+                                    ALGORITHM_HEADER,
+                                    RPiToAlgorithm.BULLSEYE + NEWLINE
+                                ))
+                                continue   #if the image is a bullseye, robot needs to navigate around the obstacle
                             elif coordinates == '-1,-1':
                                 continue  # if there isn't any obstacle detected, mapping of id symbol will skipped
 
                             else:
-                                id_string_to_android = '{"image":[' + coordinates + \
+                                id_string_to_android = 'IM|'+ coordinates + ',' + detection + '|'
+                                #'{image":[' + coordinates + \
                                 ',' + detection + ']}'
                                 print(id_string_to_android)
                                 
@@ -600,7 +624,7 @@ class MultiProcessCommunicator:
 
             except Exception as error:
                 print('Image processing process has failed: ' + str(error))
-                '''
+                
 
     def _format_for(self, target, payload):
         return {

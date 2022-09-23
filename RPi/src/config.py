@@ -47,6 +47,5 @@ BASE_IP = 'tcp://192.168.3.'
 PORT = ':5555'
 
 IMAGE_PROCESSING_SERVER_URLS = 'tcp://192.168.3.13:5555'
->>>>>>> f2afaf36a2b19dd5407c0283ddd18d146ad6b9d5
 '''
 

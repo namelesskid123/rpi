@@ -21,6 +21,14 @@ class Status:
     FASTEST_PATH = 'fastest path'.encode()
 
 class AlgorithmToArduino:
+    FORWARD = 'F010'.encode()
+    REVERSE = 'Z010'.encode()
+    RIGHT = 'R090'.encode()
+    BACK_RIGHT = 'E097'.encode()
+    LEFT = 'L090'.encode()
+    BACK_LEFT = 'K097'.encode()
+    
+    '''
     MOVE_FORWARD = 'F1|'.encode()
     STOP = 'F2|'.encode()
     REVERSE = 'F3|'.encode()
@@ -29,26 +37,23 @@ class AlgorithmToArduino:
     LEFTWIDE = 'L1|'.encode()
     LEFTNARROW = 'L2|'.encode()
     CENTER = 'C1|'.encode()
+    '''
     
 class AndroidToArduino:
-    FORWARD = 'F1'.encode()
-    STOP = 'F2'.encode()
-    REVERSE = 'F3'.encode()
-    RIGHT_WIDE = 'R1'.encode()
-    RIGHT_NARROW = 'R2'.encode()
-    LEFT_WIDE = 'L1'.encode()
-    LEFT_NARROW = 'L2'.encode()
-    CENTER = 'C1'.encode()
+    FORWARD = 'F010'.encode()
+    REVERSE = 'Z010'.encode()
+    RIGHT = 'R090'.encode()
+    BACK_RIGHT = 'E097'.encode()
+    LEFT = 'L090'.encode()
+    BACK_LEFT = 'K097'.encode()
 
     ALL_MESSAGES = [
         FORWARD,
-        STOP,
         REVERSE,
-        RIGHT_WIDE,
-        RIGHT_NARROW,
-        LEFT_WIDE,
-        LEFT_NARROW,
-        CENTER
+        RIGHT,
+        BACK_RIGHT,
+        LEFT,
+        BACK_LEFT
     ]
 
 
@@ -61,17 +66,6 @@ class AndroidToAlgorithm:
 class AndroidToRPi:
     CALIBRATE_SENSOR = 'SC|'.encode()
 
-class AlgorithmToArduino:
-    FORWARD = 'F1|'.encode()
-    STOP = 'F2|'.encode()
-    REVERSE = 'F3|'.encode()
-    RIGHT_WIDE = 'R1|'.encode()
-    RIGHT_NARROW = 'R2|'.encode()
-    LEFT_WIDE = 'L1|'.encode()
-    LEFT_NARROW = 'L2|'.encode()
-    CENTER = 'C1|'.encode()
-
-
 class AlgorithmToAndroid:
     MOVE_FORWARD = 'FS'.encode()[0]
     TURN_LEFT = 'L'.encode()[0]
@@ -82,6 +76,8 @@ class AlgorithmToAndroid:
     ALIGN_FRONT = 'AF'.encode()[0]
 
     MDF_STRING = 'M'.encode()[0]
+    IMAGE = 'IM|'
+    POSITION = 'P|'
 
 
 class AlgorithmToRPi:
@@ -106,6 +102,7 @@ class RPiToAndroid:
     TURN_LEFT = '{"move":[{"direction":"left"}]}'.encode()
     TURN_RIGHT = '{"move":[{"direction":"right"}]}'.encode()
     
+    #who is sending this, algorithm?
     IMAGE = 'IM|'
     POSITION = 'P|'
 
@@ -117,8 +114,6 @@ class RPiToArduino:
 
 
 class RPiToAlgorithm:
+    BULLSEYE = 'B'.encode()
     DONE_TAKING_PICTURE = 'D'.encode()
     DONE_IMG_REC = 'I'.encode()
-
-class Rubbish:
-    Rubbish = '\x00'.encode()

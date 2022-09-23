@@ -31,7 +31,8 @@ Algo > Android, "M{"map":[{"explored":MDF STRING Part 1,"length":300,"obstacle":
 Algo > RPi, "C[x,y|x,y|x,y]", Command RPi to take photo and store coordinates of obstacle that image is taken from (if no obstacle, x = -1, y = -1)
 Algo > RPi, "N", Exploration ended, stop image processing server and display process images
 
-RPi > Android, "{"image":[x,y,id]}", Send android coordinates and image id of image
+RPi > Android, "{"IM":[x,y,id]}", Send android coordinates and image id of image
+"P|x,y" position of robot
 
 RPi > Android, "{"status":"exploring"}", Robot is exploring
 RPi > Android, "{"status":"shortest path"}", Robot is doing fastest path
