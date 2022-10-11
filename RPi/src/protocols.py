@@ -27,18 +27,7 @@ class AlgorithmToArduino:
     BACK_RIGHT = 'E097'.encode()
     LEFT = 'L090'.encode()
     BACK_LEFT = 'K097'.encode()
-    
-    '''
-    MOVE_FORWARD = 'F1|'.encode()
-    STOP = 'F2|'.encode()
-    REVERSE = 'F3|'.encode()
-    RIGHTWIDE =  'R1|'.encode()
-    RIGHTNARROW = 'R2|'.encode()
-    LEFTWIDE = 'L1|'.encode()
-    LEFTNARROW = 'L2|'.encode()
-    CENTER = 'C1|'.encode()
-    '''
-    
+
 class AndroidToArduino:
     FORWARD = 'F010'.encode()
     REVERSE = 'Z010'.encode()
@@ -65,6 +54,7 @@ class AndroidToAlgorithm:
 
 class AndroidToRPi:
     CALIBRATE_SENSOR = 'SC|'.encode()
+    QUIT = 'QUIT'.encode()
 
 class AlgorithmToAndroid:
     MOVE_FORWARD = 'FS'.encode()[0]
@@ -76,8 +66,8 @@ class AlgorithmToAndroid:
     ALIGN_FRONT = 'AF'.encode()[0]
 
     MDF_STRING = 'M'.encode()[0]
-    IMAGE = 'IM|'
-    POSITION = 'P|'
+    IMAGE = 'IM|'.encode()
+    POSITION = 'P|'.encode()
 
 
 class AlgorithmToRPi:
@@ -101,19 +91,26 @@ class RPiToAndroid:
     MOVE_UP = '{"move":[{"direction":"forward"}]}'.encode()
     TURN_LEFT = '{"move":[{"direction":"left"}]}'.encode()
     TURN_RIGHT = '{"move":[{"direction":"right"}]}'.encode()
-    
-    #who is sending this, algorithm?
-    IMAGE = 'IM|'
-    POSITION = 'P|'
 
 
 class RPiToArduino:
     CALIBRATE_SENSOR = 'SC|'.encode()
     START_IMAGE_RECOGNITION = 'E|'.encode()
     START_FASTEST_PATH = 'F|'.encode()
+    STOP = 'STOP'.encode()
 
 
 class RPiToAlgorithm:
     BULLSEYE = 'B'.encode()
     DONE_TAKING_PICTURE = 'D'.encode()
     DONE_IMG_REC = 'I'.encode()
+
+SWAP = {
+'F' : 'Z',
+'Z' : 'F',
+'E' : 'R',
+'R' : 'E',
+'K' : 'L',
+'L' : 'K'
+}
+    

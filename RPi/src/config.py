@@ -20,10 +20,10 @@ SERIAL_PORT = "/dev/ttyUSB0" #"/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_
 BAUD_RATE = 115200
 
 # Image Recognition Settings
-STOPPING_IMAGE = 'stop_image_processing.jpg'
+STOPPING_IMAGE = 'image_process_end.jpg'
 
-IMAGE_WIDTH = 640
-IMAGE_HEIGHT = 360
+IMAGE_WIDTH = 1920
+IMAGE_HEIGHT = 1080
 IMAGE_FORMAT = 'bgr'
 
 BASE_IP = 'tcp://192.168.3.'
