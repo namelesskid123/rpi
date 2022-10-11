@@ -5,6 +5,7 @@ from src.communicator.Android_com import Android_communicator
 from src.communicator.Arduino_com import Arduino_communicator
 from src.communicator.Algorithm_com import Algorithm_communicator
 from src.config import STOPPING_IMAGE, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_FORMAT
+from src.ultrasonic import *
 from src.protocols import *
 
 from PIL import Image
@@ -18,9 +19,6 @@ import time
 import collections
 from multiprocessing import Process, Value
 from multiprocessing.managers import BaseManager
-
-import sys
-
 
 img_count = 0
 class DequeProxy(object):
@@ -42,8 +40,6 @@ class DequeProxy(object):
 
 class DequeManager(BaseManager):
     pass
-    
-
         
 DequeManager.register('DequeProxy', DequeProxy,
                       exposed=['__len__', 'append', 'appendleft', 'popleft', 'empty'])   
@@ -52,7 +48,7 @@ class MultiProcessCommunicator:
     """
     This class will carry out multi-processing communication process between Algorithm, Android and Arduino.
     """
-    def __init__(self, image_processing_server_url: str="tcp://192.168.14.12:5555"):
+    def __init__(self, image_processing_server_url: str='tcp://192.168.14.12:5555'):
         """
         Start the multiprocessing process and set up all the relevant variables
 
@@ -105,22 +101,21 @@ class MultiProcessCommunicator:
             self.image_count = Value('i',0)
             print("self.image_deque:", self.image_deque)
 
-    
-        
         
     def start(self):        
         try:
-            self.algorithm.connect_algo()
-            #self.arduino.connect_arduino()
+            #self.algorithm.connect_algo()
+            self.arduino.connect_arduino()
             self.android.connect_android()
 
             print('Connected to Algorithm, Arduino and Android')
 
-            self.read_algorithm_process.start()
-            #self.read_arduino_process.start()
+            #self.read_algorithm_process.start()
+            self.read_arduino_process.start()
             self.read_android_process.start()
             self.write_process.start()
             self.write_android_process.start()
+            
 
             if self.image_process is not None:
                 self.image_process.start()
@@ -137,23 +132,20 @@ class MultiProcessCommunicator:
 
     def end(self):
 
-        self.algorithm.disconnect_all_algo()
+        #self.algorithm.disconnect_all_algo()
         self.android.disconnect_all()
         print('Multiprocess communication has just stopped')
-
-        
 
     def _allow_reconnection(self):
         print('RPi can reconnect now')
 
         while True:
             try:
+                #if not self.read_algorithm_process.is_alive():
+                    #self._reconnect_algorithm()
                 
-                if not self.read_algorithm_process.is_alive():
-                    self._reconnect_algorithm()
-                
-                #if not self.read_arduino_process.is_alive():
-                    #self._reconnect_arduino()
+                if not self.read_arduino_process.is_alive():
+                    self._reconnect_arduino()
             
                 if not self.read_android_process.is_alive():
                     self._reconnect_android()
@@ -256,9 +248,6 @@ class MultiProcessCommunicator:
                         message + NEWLINE
                     ))
                     
-                    ##IMPLEMENT THIS##
-                    #insert check if msg is dist msg
-                    
             except Exception as error:
                 print('Process read_arduino failed: ' + str(error))
                 break    
@@ -282,134 +271,54 @@ class MultiProcessCommunicator:
                         print(message + NEWLINE)
                         self.to_android_message_deque.append(
                             message + NEWLINE)
-                    
-                    #updating movement of robot to android
-                    elif message[0] == AlgorithmToAndroid.POSITION:
-                        print(message + NEWLINE)
-                        self.to_android_message_deque.append(
-                            message + NEWLINE)
                         
                     # image recognition
                     elif message[0] == AlgorithmToRPi.TAKE_PICTURE:
-                        
-                        if self.image_count.value >= 10:
+    
+                        if self.image_count.value >= self.total_img_count:
                             self.message_deque.append(self._format_for(
                             ALGORITHM_HEADER, 
                             RPiToAlgorithm.DONE_IMG_REC + NEWLINE
                         ))
                         
                         else:
-                            
                             message = message[2:-1]  # to remove 'C[' and ']'
-                            '''self.to_android_message_deque.append(
-                                RPiToAndroid.STATUS_TAKING_PICTURE + NEWLINE
-                            )
-                            '''
+                            print('tst')
                             image = self._take_pic()
                             print('Picture taken')
                             self.message_deque.append(self._format_for(
-                                ALGORITHM_HEADER, 
+                                ALGORITHM_HEADER,
                                 RPiToAlgorithm.DONE_TAKING_PICTURE + NEWLINE
                             ))
-                            self.image_deque.append([image,message])
+                            self.image_deque.append([image, message])
 
                     elif message == AlgorithmToRPi.EXPLORATION_COMPLETE:
                         # to let image processing server end all processing and display all images
-                        self.status = Status.IDLE
-                        
-                        # to use pillow instead of cv2
                         pil_img = Image.open(STOPPING_IMAGE).convert('RGB')
                         cv_img = np.array(pil_img)
                         cv_img = cv_img[:,:,::-1].copy()
-                        self.image_deque.append([cv_img,"-1,-1|-1,-1|-1,-1"])
+                        self.image_deque.append([cv_img,"-1"])
                         
                     else:
+                        #movement commands
                         print(self._format_for(ARDUINO_HEADER,
                         message))
                         self.message_deque.append(self._format_for(
                             ARDUINO_HEADER,
-                            message #+ NEWLINE
+                            message
                         ))
                         
-                    '''
-                    else:  # (message[0]=='W' or message in ['D|', 'A|', 'Z|']):
-                        #self._forward_message_algorithm_to_android(message)
-                        print(self._format_for(ARDUINO_HEADER,
-                            message + NEWLINE))
-                        self.message_deque.append(self._format_for(
-                            ARDUINO_HEADER, 
-                            message + NEWLINE
-                        ))
-                    '''
-                    
+                        decode_msg = message.decode()
+                        if decode_msg[0] in SWAP:
+                            decode_msg = SWAP[decode_msg[0]] + decode_msg[1:]
+                        elif 'T' in decode_msg or 'Y' in decode_msg:
+                            continue
+                        print("Update Map position: ", decode_msg)
+                        self.to_android_message_deque.append(AlgorithmToAndroid.POSITION + decode_msg.encode())
                 
             except Exception as error:
                 print('Process read_algorithm failed: ' + str(error))
                 break
-
-    def _forward_message_algorithm_to_android(self, message):
-        messages_for_android = message.split(MESSAGE_SEPARATOR)
-
-        for message_for_android in messages_for_android:
-            
-            if len(message_for_android) <= 0:
-                continue
-
-            elif message_for_android[0] == AlgorithmToAndroid.CALIBRATING_CORNER:
-                self.to_android_message_deque.append(
-                    RPiToAndroid.STATUS_CALIBRATING_CORNER + NEWLINE
-                )
-
-            elif message_for_android[0] == AlgorithmToAndroid.SENSE_ALL:
-                self.to_android_message_deque.append(
-                    RPiToAndroid.STATUS_SENSE_ALL + NEWLINE
-                )
-
-            elif message_for_android[0] == AlgorithmToAndroid.ALIGN_RIGHT:
-                self.to_android_message_deque.append(
-                    RPiToAndroid.STATUS_ALIGN_RIGHT + NEWLINE
-                )
-
-            elif message_for_android[0] == AlgorithmToAndroid.ALIGN_FRONT:
-                self.to_android_message_deque.append(
-                    RPiToAndroid.STATUS_ALIGN_FRONT + NEWLINE
-                )
-
-            elif message_for_android[0] == AlgorithmToAndroid.MOVE_FORWARD:
-                if self.status == Status.EXPLORING:
-                    self.to_android_message_deque.append(
-                        RPiToAndroid.STATUS_EXPLORING + NEWLINE
-                    )
-
-            elif message_for_android[0] == AlgorithmToAndroid.TURN_LEFT:
-                self.to_android_message_deque.append(
-                    RPiToAndroid.TURN_LEFT + NEWLINE
-                )
-                
-                self.to_android_message_deque.append(
-                   RPiToAndroid.STATUS_TURNING_LEFT + NEWLINE
-                )
-            
-            elif message_for_android[0] == AlgorithmToAndroid.TURN_RIGHT:
-                self.to_android_message_deque.append(
-                    RPiToAndroid.TURN_RIGHT + NEWLINE
-                )
-                
-                self.to_android_message_deque.append(
-                   RPiToAndroid.STATUS_TURNING_RIGHT + NEWLINE
-                )
-        
-                forward_steps_no = int(message_for_android.decode()[1:])
-
-                print('Move forward by this number of steps:', forward_steps_no)
-                for _ in range(forward_steps_no):
-                    self.to_android_message_deque.append(
-                        RPiToAndroid.MOVE_UP + NEWLINE
-                    )           
-                    
-                    self.to_android_message_deque.append(
-                        RPiToAndroid.STATUS_MOVING_FORWARD + NEWLINE
-                    )        
 
     def _read_android(self):
         while True:
@@ -425,18 +334,27 @@ class MultiProcessCommunicator:
                     if len(message) <= 0:
                         continue
                     
-                    #Manual movement control using buttons in android add
-                    elif message in (AndroidToArduino.ALL_MESSAGES + [AndroidToRPi.CALIBRATE_SENSOR]):
-                        if message == AndroidToRPi.CALIBRATE_SENSOR:
-                            self.message_deque.append(self._format_for(
-                                ARDUINO_HEADER, 
-                                RPiToArduino.CALIBRATE_SENSOR + NEWLINE
-                            ))
+                    #After time limit is reached
+                    elif message == AndroidToRPi.QUIT:
                         
-                        else:
-                            self.message_deque.append(self._format_for(
-                                ARDUINO_HEADER, message #+ NEWLINE
-                            ))
+                        #immediately stop the movement of STM
+                        self.message_deque.append(self._format_for(
+                            ARDUINO_HEADER, RPiToArduino.STOP
+                        ))
+                        
+                        #send stop to algorithm
+                        
+                        # to let image processing server end all processing and display all images
+                        pil_img = Image.open(STOPPING_IMAGE).convert('RGB')
+                        cv_img = np.array(pil_img)
+                        cv_img = cv_img[:,:,::-1].copy()
+                        self.image_deque.append([cv_img,"-1"])
+                        
+                
+                    elif message in (AndroidToArduino.ALL_MESSAGES):
+                        self.message_deque.append(self._format_for(
+                            ARDUINO_HEADER, message
+                        ))
                     
                     #Android sends map data to Algorithm
                     elif AndroidToAlgorithm.SEND_ARENA in message:
@@ -448,8 +366,8 @@ class MultiProcessCommunicator:
                         msg_d = message.decode()
                         coord_lst = msg_d[10:].split('|')
                         self.total_img_count = len(coord_lst)
-                        
-                        
+                        print("Number of images: ", self.total_img_count)
+                    
                     else:
                         if message == AndroidToAlgorithm.START_IMAGE_RECOGNITION:
                             self.status = Status.IMAGE_RECOGNITION
@@ -508,6 +426,29 @@ class MultiProcessCommunicator:
                 self.message_deque.appendleft(message)
                 
                 break
+    
+    def _write_STM(self):
+        while True:
+            target = None
+            try:
+                if len(self.message_deque)>0:
+                    message = self.message_deque.popleft()
+                    target, payload = message['target'], message['payload']
+                    print("payload: ", payload)
+
+                    self.arduino.write_arduino(payload)
+
+                    else:
+                        print("Invalid header", target)
+                
+                time.sleep(0.05)
+                
+            except Exception as error:
+                print('Process write_target failed: ' + str(error))
+                if target == ARDUINO_HEADER:
+                    self.dropped_connection.value = 0
+                self.message_deque.appendleft(message)
+                break
                 
     def _write_android(self):
         while True:
@@ -531,10 +472,9 @@ class MultiProcessCommunicator:
     def _take_pic(self):
         global img_count
         try:
-            
             print('taking photo')
             # initialise pi camera
-            camera = PiCamera(resolution=(IMAGE_WIDTH, IMAGE_HEIGHT))  # '640x360'
+            camera = PiCamera(resolution=(IMAGE_WIDTH, IMAGE_HEIGHT))
             camera.awb_mode = 'horizon'
 
             # allow the camera to warmup
@@ -568,58 +508,64 @@ class MultiProcessCommunicator:
                 if not self.image_deque.empty():
                     
                     message_for_image =  self.image_deque.popleft()
-                    # format: 'x,y|x,y|x,y'
-                    obstacle_coordinates = message_for_image[1]
-
-                    print("-----------Prepareing to send image---------")
-                    reply = image_sender.send_image(
-                        'image message from RPi',
-                        message_for_image[0]
-                    )
+                    target_id = message_for_image[1]
+                    print("-----------Preparing to send image---------")
                     
+                    if target_id == 'C':
+                        reply = image_sender.send_image(
+                            'image message from RPi' + target_id,
+                            message_for_image[0]
+                        )
+                        
+                    else:
+                        reply = image_sender.send_image(
+                            'image message from RPi',
+                            message_for_image[0]
+                        )
                     reply = reply.decode('utf-8')
                     print("Reply:" + reply)
                     
-
                     if reply == 'End':
                         break  # stop sending images
-                    
-                    # example replies
-                    # "1|2|3" 3 symbols in order from left to right
-                    # "1|-1|3" 2 symbols, 1 on the left, 1 on the right
-                    # "1" 1 symbol either on the left, middle or right
+                        
                     else:
-                        detections = reply.split(MESSAGE_SEPARATOR) #from server
-                        coordinate_list_obstacle = obstacle_coordinates.split(MESSAGE_SEPARATOR) #from algo
+                        detection = reply.split('$')[0] #from server
+                        offset = reply.split('$')[1]
 
-                        for detection, coordinates in zip(detections, coordinate_list_obstacle):
-                            print("Coordinate:",coordinates)
-                            print("Detection:",detection)
+                        if detection == '-1':
+                            continue  # if there isn't any  symbol detected, mapping of symbol id will  be skipped
+                            
+                        elif detection == '41':
+                            self.message_deque.append(self._format_for(
+                                ALGORITHM_HEADER,
+                                RPiToAlgorithm.BULLSEYE + NEWLINE
+                            ))
+                            continue   #if the image is a bullseye, robot needs to navigate around the obstacle
+                            
+                        elif target_id == '-1':
+                            continue  # if there isn't any obstacle detected, mapping of id symbol will skipped
+                            
+                        elif target_id == 'C': #error correction
+                            dist = distance() #ultrasonic dist
+                            message = 'O|' + offset + '$' + str(dist)
+                            self.message_deque.append(self._format_for(
+                                ALGORITHM_HEADER,
+                                message.encode() + NEWLINE
+                            ))
+                            
 
-                            if detection == '-1':
-                                continue  # if there isn't any  symbol detected, mapping of symbol id will  be skipped
-                            elif detection == 'bullseye':
-                                self.message_deque.append(self._format_for(
-                                    ALGORITHM_HEADER,
-                                    RPiToAlgorithm.BULLSEYE + NEWLINE
-                                ))
-                                continue   #if the image is a bullseye, robot needs to navigate around the obstacle
-                            elif coordinates == '-1,-1':
-                                continue  # if there isn't any obstacle detected, mapping of id symbol will skipped
-
-                            else:
-                                id_string_to_android = 'IM|'+ coordinates + ',' + detection + '|'
-                                #'{image":[' + coordinates + \
-                                ',' + detection + ']}'
-                                print(id_string_to_android)
-                                
-                                if detection not in image_id_list:
-                                    self.image_count.value += 1
-                                    image_id_list.append(detection)
-                                
-                                self.to_android_message_deque.append(
-                                    id_string_to_android + NEWLINE
-                                )
+                        else:
+                            id_string_to_android = 'IM|'+ target_id.decode() + ',' + detection
+                            print(id_string_to_android)
+                            
+                            if detection not in image_id_list:
+                                self.image_count.value += 1
+                                image_id_list.append(detection)
+                            
+                            self.to_android_message_deque.append(
+                                id_string_to_android.encode() + NEWLINE
+                            )
+                            time.wait(0.1)
 
 
             except Exception as error:

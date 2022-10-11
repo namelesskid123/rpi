@@ -105,8 +105,8 @@ class Android_communicator:
 if __name__ == '__main__':
     A = Android_communicator()
     A.connect_android()
-    A.read_android()
-    message = 'Hello Android!'
-    A.write_android(message)
+    while True:
+        msg = A.read_android()
+        print(msg.decode())
     print("Android script successfully ran.")
 
