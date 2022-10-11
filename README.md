@@ -26,8 +26,3 @@ Ensure that OpenCV 3.3.0 is installed
 `sudo hciconfig hci0 piscan`
 
 `hcitool scan`
-
-
-## NOTE TO ANDROID/ALGO/STM TEAM:
-
-- commands.txt is a text file with most of the message formats.
