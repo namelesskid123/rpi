@@ -1,16 +1,33 @@
-from src.task2.constants import LEFT, PARK_DIST, STOP
 from src.ultrasonic import distance
-from src.communicator.MultiProcessCommunication import MultiProcessCommunicator
-from src.task2.constants import LEFT_1ST, LEFT_2ND, RIGHT_1ST, RIGHT_2ND, FORWARD, REVERSE
-import time
+from src.task2.constants import LEFT_1ST, LEFT_2ND, RIGHT_1ST, RIGHT_2ND, FORWARD, REVERSE, LEFT, PARK_DIST, STOP, RIGHT
 
 class Task2:
-    def __init__(self):
+    def __init__(self, _add_STM_command_to_queue, _take_pic, _update_img_deque):
         self.DEFAULT_DIST_AWAY = 35
         self.cur_dist_away:float = -1
         self.cur_img_result:str = ""
-        self.multiprocess_communication_process = MultiProcessCommunicator()
-        self.multiprocess_communication_process.start()
+
+        self.robot_command_completed = False
+        self.robot_ready_to_park = False
+
+        self.add_STM_command_to_queue = _add_STM_command_to_queue
+        self.take_pic = _take_pic
+        self.update_img_deque = _update_img_deque
+
+    def set_is_robot_ready_to_park(self, status):
+        self.robot_ready_to_park = status
+
+    def is_robot_ready_to_park(self):
+        return self.robot_ready_to_park
+
+    def is_command_compeleted(self):
+        return self.robot_command_completed == True
+
+    def set_command_complete_status(self, status):
+        self.robot_command_completed = status
+
+    def clear_command_complete_status(self):
+        self.robot_command_completed = False
 
     def update_cur_dist_away(self):
         self.cur_dist_away = distance() #ultrasonic dist
@@ -18,84 +35,80 @@ class Task2:
     def clear_cur_dist_away(self):
         self.cur_dist_away = -1
 
-    def update_img_result(self):
-        res = self.multiprocess_communication_process.get_img_result()
-        self.cur_img_result = res if res is not None else ""
+    def set_img_result(self, img_result):
+        self.cur_img_result = img_result if img_result is not None else ""
 
+    def get_img_result(self):
+        return self.cur_img_result
+    
     def clear_img_result(self):
         self.cur_img_result = ""
 
     def move_next(self, obstacle_id):
         if obstacle_id == 1:
             if self.cur_img_result == LEFT:
-                self.multiprocess_communication_process.add_STM_command_to_queue(LEFT_1ST)
+                self.add_STM_command_to_queue(LEFT_1ST)
             else:
-                self.multiprocess_communication_process.add_STM_command_to_queue(RIGHT_1ST)
+                self.add_STM_command_to_queue(RIGHT_1ST)
         elif obstacle_id == 2:
             if self.cur_img_result == LEFT:
-                self.multiprocess_communication_process.add_STM_command_to_queue(LEFT_2ND)
+                self.add_STM_command_to_queue(LEFT_2ND)
             else:
-                self.multiprocess_communication_process.add_STM_command_to_queue(RIGHT_2ND)
+                self.add_STM_command_to_queue(RIGHT_2ND)
 
+    # pass callback from mpc
     def move_to_default_dist_away_static(self):
         if (self.cur_dist_away > self.DEFAULT_DIST_AWAY):
             dist_to_move = self.cur_dist_away - self.DEFAULT_DIST_AWAY
             # send move forward command
             forward_cmd = FORWARD + int(dist_to_move)
             print("Sending forward command: " + forward_cmd)
-            self.multiprocess_communication_process.add_STM_command_to_queue(forward_cmd.encode())
+            self.add_STM_command_to_queue(forward_cmd.encode())
         else:
             dist_to_move = self.DEFAULT_DIST_AWAY - self.cur_dist_away
             reverse_cmd = REVERSE + int(dist_to_move)
             print("Sending reverse command: " + reverse_cmd)
-            self.multiprocess_communication_process.add_STM_command_to_queue(reverse_cmd.encode())
+            self.add_STM_command_to_queue(reverse_cmd.encode())
         # wait for the robot to complete movements
-        while not self.multiprocess_communication_process.robot_command_completed:
+        while not self.is_command_compeleted():
             pass
-        self.multiprocess_communication_process.clear_command_complete_status()
+        self.clear_command_complete_status()
 
     def move_to_default_dist_away_dynamic(self):
         dist = distance()
 
         if dist > self.DEFAULT_DIST_AWAY:
             while dist > self.DEFAULT_DIST_AWAY:
-                self.multiprocess_communication_process.add_STM_command_to_queue(FORWARD.encode())
+                self.add_STM_command_to_queue(FORWARD.encode())
                 dist = distance()
-            self.multiprocess_communication_process.add_STM_command_to_queue(STOP.encode())
+            self.add_STM_command_to_queue(STOP.encode())
             # wait for the robot to complete movements
-            while not self.multiprocess_communication_process.robot_command_completed:
+            while not self.is_command_compeleted():
                 pass
-            self.multiprocess_communication_process.clear_command_complete_status()
+            self.clear_command_complete_status()
         elif dist < self.DEFAULT_DIST_AWAY:
             while dist < self.DEFAULT_DIST_AWAY:
-                self.multiprocess_communication_process.add_STM_command_to_queue(REVERSE.encode())
+                self.add_STM_command_to_queue(REVERSE.encode())
                 dist = distance()
-            self.multiprocess_communication_process.add_STM_command_to_queue(STOP.encode())
+            self.add_STM_command_to_queue(STOP.encode())
             # wait for the robot to complete movements
-            while not self.multiprocess_communication_process.robot_command_completed:
+            while not self.is_command_compeleted():
                 pass
-            self.multiprocess_communication_process.clear_command_complete_status()
+            self.clear_command_complete_status()
 
     def park(self):
         dist = distance()
         while dist > PARK_DIST:
-            self.multiprocess_communication_process.add_STM_command_to_queue(FORWARD)
+            self.add_STM_command_to_queue(FORWARD.encode())
             dist = distance()
-        self.multiprocess_communication_process.add_STM_command_to_queue(STOP)
+        self.add_STM_command_to_queue(STOP.encode())
         # wait for the robot to complete movements
-        while not self.multiprocess_communication_process.robot_command_completed:
+        while not self.is_command_compeleted():
             pass
-        self.multiprocess_communication_process.clear_command_complete_status()
+        self.clear_command_complete_status()
         print("Parking complete")
 
     def run(self):
-        print("Pending start command from Android")
-        start_task = self.multiprocess_communication_process.get_start_task_2()
-        while start_task is False:
-            print(start_task)
-            time.sleep(2)
-            start_task = self.multiprocess_communication_process.get_start_task_2()
-            
         print("Start command received!")
         print("Visiting the 1st obstacle")
         # get initial distance away from the obstacle
@@ -106,13 +119,12 @@ class Task2:
         self.clear_cur_dist_away()
         # start image recognition for the 1st image
 
-        # TODO: implement an image recognition function in MultiProcessCommunication
-        image = self.multiprocess_communication_process._take_pic()
+        image = self.take_pic()
         print('Picture taken')
         message = 'C[0]'
-        self.image_deque.append([image, message])
+        self.update_img_deque(image, message)
         
-        while self.cur_img_result == "":
+        while self.get_img_result() == "":
             self.update_img_result()
         # send command to move to the 2nd obstacle
         print("Visiting the 2nd obstalce")
@@ -124,25 +136,20 @@ class Task2:
         self.move_to_default_dist_away_dynamic()
         # start image recognition for the 2nd image
 
-        # TODO: implement an image recognition function in MultiProcessCommunication
-        image = self.multiprocess_communication_process._take_pic()
+        image = self.take_pic()
         print('Picture taken')
         message = 'C[1]'
-        self.image_deque.append([image, message])
+        self.update_img_deque(image, message)
 
-        while self.cur_img_result == "":
+        while self.get_img_result() == "":
             self.update_img_result()
 
         self.move_next(self.cur_img_result, 2)
 
         print("Robot should automatically go back to the car park")
-        while not self.multiprocess_communication_process.robot_ready_to_park:
+        while not self.is_robot_ready_to_park():
             pass
         print("Robot is ready to park")
-        
-        # TODO: implement image recognition termination
         self.park()
-        pil_img = Image.open(STOPPING_IMAGE).convert('RGB')
-        cv_img = np.array(pil_img)
-        cv_img = cv_img[:,:,::-1].copy()
-        self.image_deque.append([cv_img,"-1"])
+        print("Robot is parked")
+        

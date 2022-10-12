@@ -63,8 +63,6 @@ class MultiProcessCommunicator:
         print('Starting Multiprocessing Communication')
         
         self.start_task_2 = False
-        self.robot_command_completed = False
-        self.robot_ready_to_park = False
         
         self.arduino = Arduino_communicator()  # handles connection to Arduino
         self.android = Android_communicator()  # handles connection to Android
@@ -233,9 +231,8 @@ class MultiProcessCommunicator:
 
         print('Successfully reconnected to Android')
     
-    def _run_task2(self):
-        print("Pending start command from Android")
-        
+    def _update_img_deque(self, img, message):
+        self.image_deque.append([img, message])
 
     def _read_arduino(self):
         while True:
@@ -262,11 +259,8 @@ class MultiProcessCommunicator:
                 print('Process read_arduino failed: ' + str(error))
                 break    
 
-    def add_STM_command_to_queue(self, command):
+    def _add_STM_command_to_queue(self, command):
         self.message_deque.append(self._format_for(ARDUINO_HEADER, command))
-
-    def clear_command_complete_status(self):
-        self.robot_command_completed = False
 
     # def _read_algorithm(self):
     #     while True:
@@ -463,10 +457,10 @@ class MultiProcessCommunicator:
                         continue
                         
                     if constants.ROBOT_COMMAND_COMPLETED in message:
-                        self.robot_command_completed = True
+                        self.task_2.set_command_complete_status(True)
 
                     if constants.ROBOT_READY_TO_PARK in message:
-                        self.robot_ready_to_park = True
+                        self.task_2.set_is_robot_ready_to_park(True)
                     
             except Exception as error:
                 print('Process read_STM failed: ' + str(error))
@@ -573,6 +567,7 @@ class MultiProcessCommunicator:
 
                         else:
                             self.cur_img_result = detection
+                            self.task_2.set_img_result(detection)
                             
                             """
                             id_string_to_android = 'IM|'+ target_id.decode() + ',' + detection
@@ -600,3 +595,17 @@ class MultiProcessCommunicator:
             'target': target,
             'payload': payload,
         }
+
+    def _run_task2(self):
+        print("Pending start command from Android")
+        while self.get_start_task_2() is False:
+            print(self.get_start_task_2())
+            time.sleep(2)
+
+        self.task_2.run(self._add_STM_command_to_queue, self._take_pic, self._update_img_deque)
+
+        # image recognition termination
+        pil_img = Image.open(STOPPING_IMAGE).convert('RGB')
+        cv_img = np.array(pil_img)
+        cv_img = cv_img[:,:,::-1].copy()
+        self.image_deque.append([cv_img,"-1"])
