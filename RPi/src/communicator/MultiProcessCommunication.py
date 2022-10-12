@@ -7,7 +7,7 @@ from src.communicator.Algorithm_com import Algorithm_communicator
 from src.config import STOPPING_IMAGE, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_FORMAT
 from src.ultrasonic import *
 from src.protocols import *
-from src.task2 import constants
+from src.task2 import Task2, constants
 
 from PIL import Image
 import numpy as np
@@ -49,7 +49,7 @@ class MultiProcessCommunicator:
     """
     This class will carry out multi-processing communication process between Algorithm, Android and Arduino.
     """
-    def __init__(self, image_processing_server_url: str='tcp://192.168.14.12:5555'):
+    def __init__(self, image_processing_server_url: str='tcp://192.168.14.11:5555'):
         """
         Start the multiprocessing process and set up all the relevant variables
 
@@ -61,12 +61,14 @@ class MultiProcessCommunicator:
         The multiprocessing queue will also be instantiated
         """
         print('Starting Multiprocessing Communication')
+        
         self.start_task_2 = False
         self.robot_command_completed = False
         self.robot_ready_to_park = False
-        # self.algorithm = Algorithm_communicator()  # handles connection to Algorithm
+        
         self.arduino = Arduino_communicator()  # handles connection to Arduino
         self.android = Android_communicator()  # handles connection to Android
+        self.task_2 = Task2()
         
         self.manager = DequeManager()
         self.manager.start()
@@ -82,7 +84,9 @@ class MultiProcessCommunicator:
         
         self.write_process = Process(target=self._write_target)
         self.write_android_process = Process(target=self._write_android)
+        self.task2_process = Process(target = self._run_task2)
         
+        self.cur_img_result = None
         
         # the current action / status of the robot
         self.status = Status.IDLE  # robot starts off being idle
@@ -115,7 +119,7 @@ class MultiProcessCommunicator:
             print('Connected to Algorithm, Arduino and Android')
 
             #self.read_algorithm_process.start()
-            self.read_arduino_process.start()
+            self.read_STM_process.start()
             self.read_android_process.start()
             self.write_process.start()
             self.write_android_process.start()
@@ -187,7 +191,7 @@ class MultiProcessCommunicator:
     #     self.write_android_process = Process(target=self._write_android)
     #     self.write_android_process.start()
 
-    #     print('Successfully reconnected to Algorithm')
+    #     print('Successfully reconnected to Algorithm'
 
     def _reconnect_arduino(self):
         self.arduino.disconnect_arduino()
@@ -228,6 +232,10 @@ class MultiProcessCommunicator:
         self.write_android_process.start()
 
         print('Successfully reconnected to Android')
+    
+    def _run_task2(self):
+        print("Pending start command from Android")
+        
 
     def _read_arduino(self):
         while True:
@@ -382,24 +390,29 @@ class MultiProcessCommunicator:
                             #     RPiToArduino.START_IMAGE_RECOGNITION + NEWLINE
                             # ))
                             self.start_task_2 = True
-                        elif message == AndroidToAlgorithm.START_FASTEST_PATH:
+                            
+                        elif message in AndroidToAlgorithm.START_FASTEST_PATH:
                             self.status = Status.FASTEST_PATH
                             time.sleep(0.5)
                             # self.message_deque.append(self._format_for(
                             #     ARDUINO_HEADER, 
                             #     RPiToArduino.START_FASTEST_PATH + NEWLINE
                             # ))
-                            self.start_task_2 = True
-
-                        self.message_deque.append(self._format_for(
-                            ALGORITHM_HEADER, 
-                            message + NEWLINE
-                        ))
+                            self.set_start_task_2(True)
+                            print("T: ", self.start_task_2)
+                            
 			
                     
             except Exception as error:
                 print('Process read_android failed: ' + str(error))
                 break
+                
+    def set_start_task_2(self, start):
+        self.start_task_2 = start
+                
+    def get_start_task_2(self):
+        print("M: ", self.start_task_2)
+        return self.start_task_2
 
     def _write_target(self):
         while True:
@@ -441,6 +454,7 @@ class MultiProcessCommunicator:
                 
                 if messages is None:
                     continue
+                    
                 message_list = messages.splitlines()
                 
                 for message in message_list:
@@ -465,10 +479,6 @@ class MultiProcessCommunicator:
                     message = self.to_android_message_deque.popleft()
                     
                     self.android.write_android(message)
-                
-                else:
-                    self.android.write_android("polling")
-                    time.sleep(5)
                 
             except Exception as error:
                 print('Process write_android failed: ' + str(error))
@@ -543,10 +553,10 @@ class MultiProcessCommunicator:
                             continue  # if there isn't any  symbol detected, mapping of symbol id will  be skipped
                             
                         elif detection == '41':
-                            self.message_deque.append(self._format_for(
-                                ALGORITHM_HEADER,
-                                RPiToAlgorithm.BULLSEYE + NEWLINE
-                            ))
+                            #self.message_deque.append(self._format_for(
+                            #    ALGORITHM_HEADER,
+                            #    RPiToAlgorithm.BULLSEYE + NEWLINE
+                            #))
                             continue   #if the image is a bullseye, robot needs to navigate around the obstacle
                             
                         elif target_id == '-1':
@@ -555,13 +565,16 @@ class MultiProcessCommunicator:
                         elif target_id == 'C': #error correction
                             dist = distance() #ultrasonic dist
                             message = 'O|' + offset + '$' + str(dist)
-                            self.message_deque.append(self._format_for(
-                                ALGORITHM_HEADER,
-                                message.encode() + NEWLINE
-                            ))
+                            #self.message_deque.append(self._format_for(
+                            #    ALGORITHM_HEADER,
+                            #    message.encode() + NEWLINE
+                            #))
                             
 
                         else:
+                            self.cur_img_result = detection
+                            
+                            """
                             id_string_to_android = 'IM|'+ target_id.decode() + ',' + detection
                             print(id_string_to_android)
                             
@@ -573,11 +586,15 @@ class MultiProcessCommunicator:
                                 id_string_to_android.encode() + NEWLINE
                             )
                             time.wait(0.1)
-
-
+                            """
+                            
             except Exception as error:
                 print('Image processing process has failed: ' + str(error))
-
+                time.wait(2)
+    
+    def get_img_result():
+        return self.cur_img_result
+    
     def _format_for(self, target, payload):
         return {
             'target': target,
