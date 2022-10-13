@@ -1,11 +1,12 @@
 from src.ultrasonic import distance
 from src.task2.constants import LEFT_1ST, LEFT_2ND, RIGHT_1ST, RIGHT_2ND, FORWARD, REVERSE, LEFT, PARK_DIST, STOP, RIGHT
 
+
 class Task2:
     def __init__(self, _add_STM_command_to_queue, _take_pic, _update_img_deque):
         self.DEFAULT_DIST_AWAY = 35
-        self.cur_dist_away:float = -1
-        self.cur_img_result:str = ""
+        self.cur_dist_away: float = -1
+        self.cur_img_result: str = ""
 
         self.robot_command_completed = False
         self.robot_ready_to_park = False
@@ -30,7 +31,7 @@ class Task2:
         self.robot_command_completed = False
 
     def update_cur_dist_away(self):
-        self.cur_dist_away = distance() #ultrasonic dist
+        self.cur_dist_away = distance()  # ultrasonic dist
 
     def clear_cur_dist_away(self):
         self.cur_dist_away = -1
@@ -40,7 +41,7 @@ class Task2:
 
     def get_img_result(self):
         return self.cur_img_result
-    
+
     def clear_img_result(self):
         self.cur_img_result = ""
 
@@ -61,12 +62,12 @@ class Task2:
         if (self.cur_dist_away > self.DEFAULT_DIST_AWAY):
             dist_to_move = self.cur_dist_away - self.DEFAULT_DIST_AWAY
             # send move forward command
-            forward_cmd = FORWARD + int(dist_to_move)
+            forward_cmd = FORWARD + str(int(dist_to_move))
             print("Sending forward command: " + forward_cmd)
             self.add_STM_command_to_queue(forward_cmd.encode())
         else:
             dist_to_move = self.DEFAULT_DIST_AWAY - self.cur_dist_away
-            reverse_cmd = REVERSE + int(dist_to_move)
+            reverse_cmd = REVERSE + str(int(dist_to_move))
             print("Sending reverse command: " + reverse_cmd)
             self.add_STM_command_to_queue(reverse_cmd.encode())
         # wait for the robot to complete movements
@@ -115,7 +116,7 @@ class Task2:
         while self.cur_dist_away == -1:
             self.update_cur_dist_away()
         # move to the default distance away from the obstacle
-        self.move_to_default_dist_away()
+        self.move_to_default_dist_away_static()
         self.clear_cur_dist_away()
         # start image recognition for the 1st image
 
@@ -123,7 +124,7 @@ class Task2:
         print('Picture taken')
         message = 'C[0]'
         self.update_img_deque(image, message)
-        
+
         while self.get_img_result() == "":
             self.update_img_result()
         # send command to move to the 2nd obstacle
@@ -152,4 +153,3 @@ class Task2:
         print("Robot is ready to park")
         self.park()
         print("Robot is parked")
-        

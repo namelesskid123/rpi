@@ -1,7 +1,5 @@
 import os
 import argparse
-from RPi.src.task2.algo import Task2
-
 from src.communicator.MultiProcessCommunication import MultiProcessCommunicator
 
 
