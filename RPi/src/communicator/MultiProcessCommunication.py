@@ -2,7 +2,7 @@ import sys
 sys.path.append('/home/raspberry/.virtualenvs/cv/lib/python3.9/site-packages')
 
 from src.communicator.Android_com import Android_communicator
-from src.communicator.Arduino_com import Arduino_communicator
+from src.communicator.STM_com import STM_communicator
 from src.communicator.Algorithm_com import Algorithm_communicator
 from src.config import STOPPING_IMAGE, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_FORMAT
 from src.ultrasonic import *
@@ -47,7 +47,7 @@ DequeManager.register('DequeProxy', DequeProxy,
 
 class MultiProcessCommunicator:
     """
-    This class will carry out multi-processing communication process between Algorithm, Android and Arduino.
+    This class will carry out multi-processing communication process between Algorithm, Android and STM.
     """
     def __init__(self, image_processing_server_url: str='tcp://192.168.14.11:5555'):
         """
@@ -55,7 +55,7 @@ class MultiProcessCommunicator:
 
         Upon starting, RPi will connect to individual devices in the following order
         - Algorithm
-        - Arduino
+        - STM
         - Android
 
         The multiprocessing queue will also be instantiated
@@ -66,18 +66,17 @@ class MultiProcessCommunicator:
         self.robot_command_completed = False
         self.robot_ready_to_park = False
         
-        self.arduino = Arduino_communicator()  # handles connection to Arduino
+        self.STM = STM_communicator()  # handles connection to STM
         self.android = Android_communicator()  # handles connection to Android
         self.task_2 = Task2()
         
         self.manager = DequeManager()
         self.manager.start()
 
-        # messages from Arduino, Algorithm and Android are placed in this queue before being read
+        # messages from STM, Algorithm and Android are placed in this queue before being read
         self.message_deque = self.manager.DequeProxy()
         self.to_android_message_deque = self.manager.DequeProxy()
 
-        # self.read_arduino_process = Process(target=self._read_arduino)
         self.read_STM_process = Process(target=self._read_STM)
         # self.read_algorithm_process = Process(target=self._read_algorithm)
         self.read_android_process = Process(target=self._read_android)
@@ -91,7 +90,7 @@ class MultiProcessCommunicator:
         # the current action / status of the robot
         self.status = Status.IDLE  # robot starts off being idle
 
-        self.dropped_connection = Value('i',0) # 0 - arduino, 1 - algorithm
+        self.dropped_connection = Value('i',0) # 0 - STM, 1 - algorithm
 
         # for image recognition
         self.image_process = None
@@ -113,10 +112,10 @@ class MultiProcessCommunicator:
     def start(self):        
         try:
             #self.algorithm.connect_algo()
-            self.arduino.connect_arduino()
+            self.STM.connect_STM()
             self.android.connect_android()
 
-            print('Connected to Algorithm, Arduino and Android')
+            print('Connected to Algorithm, STM and Android')
 
             #self.read_algorithm_process.start()
             self.read_STM_process.start()
@@ -127,9 +126,9 @@ class MultiProcessCommunicator:
 
             if self.image_process is not None:
                 self.image_process.start()
-                print('All processes have started : read-arduino, read-algorithm, read-android, write-android, image_processing')
+                print('All processes have started : read-STM, read-algorithm, read-android, write-android, image_processing')
             else:
-                print('All processes have started : read-arduino, read-algorithm, read-android, write-android')
+                print('All processes have started : read-STM, read-algorithm, read-android, write-android')
 
             print('Multiprocess communication session started')
             
@@ -151,15 +150,15 @@ class MultiProcessCommunicator:
                 #if not self.read_algorithm_process.is_alive():
                     #self._reconnect_algorithm()
                 
-                if not self.read_arduino_process.is_alive():
-                    self._reconnect_arduino()
+                if not self.read_STM_process.is_alive():
+                    self._reconnect_STM()
             
                 if not self.read_android_process.is_alive():
                     self._reconnect_android()
                 
                 if not self.write_process.is_alive():
                     if self.dropped_connection.value == 0:
-                        self._reconnect_arduino()
+                        self._reconnect_STM()
                     elif self.dropped_connection.value == 1:
                         self._reconnect_algorithm()
                 
@@ -193,17 +192,17 @@ class MultiProcessCommunicator:
 
     #     print('Successfully reconnected to Algorithm'
 
-    def _reconnect_arduino(self):
-        self.arduino.disconnect_arduino()
+    def _reconnect_STM(self):
+        self.STM.disconnect_STM()
         
-        self.read_arduino_process.terminate()
+        self.read_STM_process.terminate()
         self.write_process.terminate()
         self.write_android_process.terminate()
 
-        self.arduino.connect_arduino()
+        self.STM.connect_STM()
 
-        self.read_arduino_process = Process(target=self._read_arduino)
-        self.read_arduino_process.start()
+        self.read_STM_process = Process(target=self._read_STM)
+        self.read_STM_process.start()
 
         self.write_process = Process(target=self._write_target)
         self.write_process.start()
@@ -211,7 +210,7 @@ class MultiProcessCommunicator:
         self.write_android_process = Process(target=self._write_android)
         self.write_android_process.start()
 
-        print('Successfully reconnected to Arduino')
+        print('Successfully reconnected to STM')
 
     def _reconnect_android(self):
         self.android.disconnect_android()
@@ -236,11 +235,12 @@ class MultiProcessCommunicator:
     def _run_task2(self):
         print("Pending start command from Android")
         
-
-    def _read_arduino(self):
+    '''
+    #####################OLD STM COMMUNICATIONS###############
+    def _read_STM(self):
         while True:
             try:
-                messages = self.arduino.read_arduino()
+                messages = self.STM.read_STM()
                 
                 if messages is None:
                     continue
@@ -259,11 +259,13 @@ class MultiProcessCommunicator:
                     ))
                     
             except Exception as error:
-                print('Process read_arduino failed: ' + str(error))
-                break    
-
+                print('Process read_STM failed: ' + str(error))
+                break
+    #############################################################
+    '''
+    
     def add_STM_command_to_queue(self, command):
-        self.message_deque.append(self._format_for(ARDUINO_HEADER, command))
+        self.message_deque.append(self._format_for(STM_HEADER, command))
 
     def clear_command_complete_status(self):
         self.robot_command_completed = False
@@ -317,10 +319,10 @@ class MultiProcessCommunicator:
                         
     #                 else:
     #                     #movement commands
-    #                     print(self._format_for(ARDUINO_HEADER,
+    #                     print(self._format_for(STM_HEADER,
     #                     message))
     #                     self.message_deque.append(self._format_for(
-    #                         ARDUINO_HEADER,
+    #                         STM_HEADER,
     #                         message
     #                     ))
                         
@@ -355,7 +357,7 @@ class MultiProcessCommunicator:
                         
                         #immediately stop the movement of STM
                         self.message_deque.append(self._format_for(
-                            ARDUINO_HEADER, RPiToArduino.STOP
+                            STM_HEADER, RPiToSTM.STOP
                         ))
                         
                         #send stop to algorithm
@@ -366,9 +368,9 @@ class MultiProcessCommunicator:
                         cv_img = cv_img[:,:,::-1].copy()
                         self.image_deque.append([cv_img,"-1"])
                         
-                    elif message in (AndroidToArduino.ALL_MESSAGES):
+                    elif message in (AndroidToSTM.ALL_MESSAGES):
                         self.message_deque.append(self._format_for(
-                            ARDUINO_HEADER, message
+                            STM_HEADER, message
                         ))
                     #Android sends map data to Algorithm
                     elif AndroidToAlgorithm.SEND_ARENA in message:
@@ -386,8 +388,8 @@ class MultiProcessCommunicator:
                         if message == AndroidToAlgorithm.START_IMAGE_RECOGNITION:
                             # self.status = Status.IMAGE_RECOGNITION
                             # self.message_deque.append(self._format_for(
-                            #     ARDUINO_HEADER,
-                            #     RPiToArduino.START_IMAGE_RECOGNITION + NEWLINE
+                            #     STM_HEADER,
+                            #     RPiToSTM.START_IMAGE_RECOGNITION + NEWLINE
                             # ))
                             self.start_task_2 = True
                             
@@ -395,8 +397,8 @@ class MultiProcessCommunicator:
                             self.status = Status.FASTEST_PATH
                             time.sleep(0.5)
                             # self.message_deque.append(self._format_for(
-                            #     ARDUINO_HEADER, 
-                            #     RPiToArduino.START_FASTEST_PATH + NEWLINE
+                            #     STM_HEADER,
+                            #     RPiToSTM.START_FASTEST_PATH + NEWLINE
                             # ))
                             self.set_start_task_2(True)
                             print("T: ", self.start_task_2)
@@ -423,8 +425,8 @@ class MultiProcessCommunicator:
                     target, payload = message['target'], message['payload']
                     print("payload: ", payload)
 
-                    if target == ARDUINO_HEADER:
-                        self.arduino.write_arduino(payload)
+                    if target == STM_HEADER:
+                        self.STM.write_STMS(payload)
                         
                     elif target == ALGORITHM_HEADER:
                         self.algorithm.write_algo(payload)
@@ -437,7 +439,7 @@ class MultiProcessCommunicator:
             except Exception as error:
                 print('Process write_target failed: ' + str(error))
 
-                if target == ARDUINO_HEADER:
+                if target == STM_HEADER:
                     self.dropped_connection.value = 0
 
                 elif target == ALGORITHM_HEADER:
@@ -447,10 +449,11 @@ class MultiProcessCommunicator:
                 
                 break
     
+    #TASK 2 ONLY#
     def _read_STM(self):
         while True:
             try:
-                messages = self.arduino.read_arduino()
+                messages = self.STM.read_STM()
                 
                 if messages is None:
                     continue
