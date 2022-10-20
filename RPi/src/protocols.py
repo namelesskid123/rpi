@@ -12,7 +12,7 @@ MESSAGE_SEPARATOR = '|'.encode()
 NEWLINE = '\n'.encode()
 
 ANDROID_HEADER = 'AND'.encode()
-ARDUINO_HEADER = 'ARD'.encode()
+STM_HEADER = 'ARD'.encode()
 ALGORITHM_HEADER = 'ALG'.encode()
 
 class Status:
@@ -20,7 +20,7 @@ class Status:
     IMAGE_RECOGNITION = 'IR'.encode()
     FASTEST_PATH = 'fastest path'.encode()
 
-class AlgorithmToArduino:
+class AlgorithmToSTM:
     FORWARD = 'F010'.encode()
     REVERSE = 'Z010'.encode()
     RIGHT = 'R090'.encode()
@@ -28,7 +28,7 @@ class AlgorithmToArduino:
     LEFT = 'L090'.encode()
     BACK_LEFT = 'K097'.encode()
 
-class AndroidToArduino:
+class AndroidToSTM:
     FORWARD = 'F010'.encode()
     REVERSE = 'Z010'.encode()
     RIGHT = 'R090'.encode()
@@ -93,7 +93,7 @@ class RPiToAndroid:
     TURN_RIGHT = '{"move":[{"direction":"right"}]}'.encode()
 
 
-class RPiToArduino:
+class RPiToSTM:
     CALIBRATE_SENSOR = 'SC|'.encode()
     START_IMAGE_RECOGNITION = 'E|'.encode()
     START_FASTEST_PATH = 'F|'.encode()
